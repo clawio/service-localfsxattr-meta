@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/clawio/service.localstorexattr.meta",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5.2",
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
@@ -9,7 +9,7 @@
 		},
 		{
 			"ImportPath": "github.com/clawio/service.auth/lib",
-			"Rev": "f719f969d9ba2a408da4763d66f5f5faf2ecbab1"
+			"Rev": "59b2672ba44edebdc97f2a55f56d716d7c8ea33b"
 		},
 		{
 			"ImportPath": "github.com/sirupsen/logrus",
@@ -18,15 +18,11 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "1796f9b8b7178e3c7587dff118d3bb9d37f9b0b3"
+			"Rev": "b4e17d61b15679caf2335da776c614169a1b4643"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
 			"Rev": "1f1a4999ca75ba4fd6d5c91233383a170034a1a5"
-		},
-        {
-            "ImportPath": "golang.org/x/sys/unix",
-            "Rev": "833a04a10549a95dc34458c195cbad61bbb6cb4d"
-        }
+		}
 	]
 }
