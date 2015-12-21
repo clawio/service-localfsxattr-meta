@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	pb "github.com/clawio/service.localstorexattr.meta/proto/metadata"
+	pb "github.com/clawio/service-localfsxattr-meta/proto/metadata"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"net"
@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	serviceID         = "CLAWIO_LOCALSTOREXATTRMETA"
+	serviceID         = "CLAWIO_LOCALFSXATTR_META"
 	dataDirEnvar      = serviceID + "_DATADIR"
 	tmpDirEnvar       = serviceID + "_TMPDIR"
 	portEnvar         = serviceID + "_PORT"
@@ -66,6 +66,16 @@ func main() {
 	p.tmpDir = env.tmpDir
 	p.prop = env.prop
 	p.sharedSecret = env.sharedSecret
+
+	// Create data and tmp dirs
+	if err := os.MkdirAll(p.dataDir, 0644); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+	if err := os.MkdirAll(p.tmpDir, 0644); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 
 	srv := newServer(p)
 

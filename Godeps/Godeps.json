@@ -1,6 +1,6 @@
 {
-	"ImportPath": "github.com/clawio/service.localstorexattr.meta",
-	"GoVersion": "go1.5.2",
+	"ImportPath": "github.com/clawio/service-localfsxattr-meta",
+	"GoVersion": "go1.5",
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
@@ -8,8 +8,8 @@
 			"Rev": "'35bc42037350f0078e3c974c6ea690f1926603ab'"
 		},
 		{
-			"ImportPath": "github.com/clawio/service.auth/lib",
-			"Rev": "59b2672ba44edebdc97f2a55f56d716d7c8ea33b"
+			"ImportPath": "github.com/clawio/service-auth/lib",
+			"Rev": "37f9431977a2d19a02605bee3731973d893aa630"
 		},
 		{
 			"ImportPath": "github.com/dgrijalva/jwt-go",
@@ -27,15 +27,15 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "b4e17d61b15679caf2335da776c614169a1b4643"
+			"Rev": "68a055e15f0ce90989da5564fd947fb72ce67513"
 		},
 		{
 			"ImportPath": "golang.org/x/net/trace",
-			"Rev": "b4e17d61b15679caf2335da776c614169a1b4643"
+			"Rev": "68a055e15f0ce90989da5564fd947fb72ce67513"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Rev": "1f1a4999ca75ba4fd6d5c91233383a170034a1a5"
+			"Rev": "b9a4f2b9f9dac22bdd2705ad40bcc2128d439635"
 		}
 	]
 }

@@ -1,20 +1,19 @@
 FROM golang:1.5
 MAINTAINER Hugo González Labrador
 
-ENV CLAWIO_LOCALSTOREXATTRMETA_DATADIR /tmp
-ENV CLAWIO_LOCALSTOREXATTRMETA_TMPDIR /tmp
-ENV CLAWIO_LOCALSTOREXATTRMETA_PORT 57001
-ENV CLAWIO_LOCALSTOREXATTRMETA_PROP "service-localstorexattr-prop:57003"
+ENV CLAWIO_LOCALFSXATTR_META_DATADIR /tmp/localfsxattr-mysql
+ENV CLAWIO_LOCALFSXATTR_META_TMPDIR /tmp/localfsxattr-mysql
+ENV CLAWIO_LOCALFSXATTR_META_PORT 57011
+ENV CLAWIO_LOCALFSXATTR_META_PROP "service-localfsxattr-mysqlprop:57013"
 ENV CLAWIO_SHAREDSECRET secret
 
-ADD . /go/src/github.com/clawio/service.localstorexattr.meta
-WORKDIR /go/src/github.com/clawio/service.localstorexattr.meta
+ADD . /go/src/github.com/clawio/service-localfsxattr-meta
+WORKDIR /go/src/github.com/clawio/service-localfsxattr-meta
 
 RUN go get -u github.com/tools/godep
 RUN godep restore
 RUN go install
 
-ENTRYPOINT /go/bin/service.localstorexattr.meta
-
-EXPOSE 57001
+ENTRYPOINT /go/bin/service-localfsxattr-meta
+EXPOSE 57011
 

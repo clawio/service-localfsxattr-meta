@@ -2,10 +2,10 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
-	authlib "github.com/clawio/service.auth/lib"
-	pb "github.com/clawio/service.localstorexattr.meta/proto/metadata"
-	proppb "github.com/clawio/service.localstorexattr.meta/proto/propagator"
-	"github.com/clawio/service.localstorexattr.meta/xattr"
+	authlib "github.com/clawio/service-auth/lib"
+	pb "github.com/clawio/service-localfsxattr-meta/proto/metadata"
+	proppb "github.com/clawio/service-localfsxattr-meta/proto/propagator"
+	"github.com/clawio/service-localfsxattr-meta/xattr"
 	rus "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
