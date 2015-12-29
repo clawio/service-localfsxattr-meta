@@ -2,10 +2,12 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"fmt"
 	authlib "github.com/clawio/service-auth/lib"
 	pb "github.com/clawio/service-localfsxattr-meta/proto/metadata"
 	proppb "github.com/clawio/service-localfsxattr-meta/proto/propagator"
 	"github.com/clawio/service-localfsxattr-meta/xattr"
+	"github.com/dropbox/godropbox/resource_pool"
 	rus "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -30,18 +32,53 @@ var (
 )
 
 type newServerParams struct {
-	dataDir      string
-	tmpDir       string
-	prop         string
-	sharedSecret string
+	dataDir            string
+	tmpDir             string
+	prop               string
+	propMaxActive      int
+	propMaxIdle        int
+	propMaxConcurrency int
+	sharedSecret       string
 }
 
 func newServer(p *newServerParams) *server {
-	return &server{p}
+	poolOptions := resource_pool.Options{}
+	poolOptions.MaxActiveHandles = int32(p.propMaxActive)
+	poolOptions.MaxIdleHandles = uint32(p.propMaxIdle)
+	poolOptions.OpenMaxConcurrency = p.propMaxConcurrency
+	poolOptions.Open = func(resourceLocation string) (interface{}, error) {
+		con, err := grpc.Dial(resourceLocation, grpc.WithInsecure())
+		if err != nil {
+			rus.Error(err)
+			return nil, err
+		}
+		return con, nil
+	}
+	poolOptions.Close = func(handle interface{}) error {
+		con, ok := handle.(*grpc.ClientConn)
+		if !ok {
+			err := fmt.Errorf("connection handle is %+v but expected %+v", handle, "*grpc.ClientConn")
+			rus.Error(err)
+			return err
+		}
+		err := con.Close()
+		if err != nil {
+			rus.Error(err)
+			return err
+		}
+		return nil
+	}
+	pool := resource_pool.NewSimpleResourcePool(poolOptions)
+	pool.Register(p.prop)
+	s := &server{}
+	s.p = p
+	s.grpcPool = pool
+	return s
 }
 
 type server struct {
-	p *newServerParams
+	p        *newServerParams
+	grpcPool resource_pool.ResourcePool
 }
 
 func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
@@ -78,20 +115,27 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 
 	home := getHome(idt)
 
-	log.Infof("home is %s", home)
+	log.Infof("user home is %s", home)
 
 	pp := s.getPhysicalPath(home)
 
-	log.Infof("physical path is %s", pp)
+	log.Infof("user physical home is %s", pp)
 
-	con, err := grpc.Dial(s.p.prop, grpc.WithInsecure())
+	resource, err := s.grpcPool.Get("")
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
 	}
-	defer con.Close()
 
-	log.Infof("created connection to prop")
+	defer resource.Release()
+
+	handle, err := resource.Handle()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+	con := handle.(*grpc.ClientConn)
+	log.Infof("created connection to %s", s.p.prop)
 
 	client := proppb.NewPropClient(con)
 
@@ -100,7 +144,7 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 	// Create home dir if not exists
 	if os.IsNotExist(err) {
 
-		log.Infof("home does not exist")
+		log.Infof("user physical home %s does not exist", pp)
 
 		err = os.MkdirAll(pp, dirPerm)
 		if err != nil {
@@ -108,7 +152,7 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 			return &pb.Void{}, err
 		}
 
-		log.Infof("home created at %s", pp)
+		log.Infof("user physical home created at %s", pp)
 
 		// trigger file id creation on xattr
 		// if it is not set
@@ -127,7 +171,7 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 			return &pb.Void{}, nil
 		}
 
-		log.Info("home putted into prop")
+		log.Info("home saved to %s", s.p.prop)
 
 		return &pb.Void{}, nil
 	}
@@ -137,7 +181,7 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 		return &pb.Void{}, err
 	}
 
-	log.Infof("home at %s already created")
+	log.Infof("user physical home at %s already created")
 
 	// trigger file id creation on xattr
 	// if it is not set
@@ -155,8 +199,6 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 	if err != nil {
 		return &pb.Void{}, nil
 	}
-
-	log.Infof("home is in prop")
 
 	return &pb.Void{}, nil
 }
@@ -225,14 +267,21 @@ func (s *server) Mkdir(ctx context.Context, req *pb.MkdirReq) (*pb.Void, error) 
 		return &pb.Void{}, err
 	}
 
-	con, err := grpc.Dial(s.p.prop, grpc.WithInsecure())
+	resource, err := s.grpcPool.Get("")
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
 	}
-	defer con.Close()
 
-	log.Infof("created connection to prop")
+	defer resource.Release()
+
+	handle, err := resource.Handle()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+	con := handle.(*grpc.ClientConn)
+	log.Infof("created connection to %s", s.p.prop)
 
 	client := proppb.NewPropClient(con)
 
@@ -326,14 +375,21 @@ func (s *server) Stat(ctx context.Context, req *pb.StatReq) (*pb.Metadata, error
 
 	log.Infof("stated parent %s", pp)
 
-	con, err := grpc.Dial(s.p.prop, grpc.WithInsecure())
+	resource, err := s.grpcPool.Get("")
 	if err != nil {
 		log.Error(err)
 		return &pb.Metadata{}, err
 	}
-	defer con.Close()
 
-	log.Infof("created connection to prop")
+	defer resource.Release()
+
+	handle, err := resource.Handle()
+	if err != nil {
+		log.Error(err)
+		return &pb.Metadata{}, err
+	}
+	con := handle.(*grpc.ClientConn)
+	log.Infof("created connection to %s", s.p.prop)
 
 	client := proppb.NewPropClient(con)
 
@@ -493,13 +549,20 @@ func (s *server) Cp(ctx context.Context, req *pb.CpReq) (*pb.Void, error) {
 		log.Infof("copied from file %s to file %s", psrc, pdst)
 	}
 
-	con, err := grpc.Dial(s.p.prop, grpc.WithInsecure())
+	resource, err := s.grpcPool.Get("")
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
 	}
-	defer con.Close()
 
+	defer resource.Release()
+
+	handle, err := resource.Handle()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+	con := handle.(*grpc.ClientConn)
 	log.Infof("created connection to %s", s.p.prop)
 
 	client := proppb.NewPropClient(con)
@@ -585,14 +648,21 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
 	log.Infof("renamed from %s to %s", psrc, pdst)
 
-	con, err := grpc.Dial(s.p.prop, grpc.WithInsecure())
+	resource, err := s.grpcPool.Get("")
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
 	}
-	defer con.Close()
 
-	log.Infof("created connection to prop")
+	defer resource.Release()
+
+	handle, err := resource.Handle()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+	con := handle.(*grpc.ClientConn)
+	log.Infof("created connection to %s", s.p.prop)
 
 	client := proppb.NewPropClient(con)
 
@@ -669,14 +739,21 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 	log.Infof("removed %s", pp)
 
-	con, err := grpc.Dial(s.p.prop, grpc.WithInsecure())
+	resource, err := s.grpcPool.Get("")
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
 	}
-	defer con.Close()
 
-	log.Infof("created connection to prop")
+	defer resource.Release()
+
+	handle, err := resource.Handle()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+	con := handle.(*grpc.ClientConn)
+	log.Infof("created connection to %s", s.p.prop)
 
 	client := proppb.NewPropClient(con)
 
