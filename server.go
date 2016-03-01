@@ -1,7 +1,7 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
+        "github.com/nu7hatch/gouuid"
 	"fmt"
 	authlib "github.com/clawio/service-auth/lib"
 	pb "github.com/clawio/service-localfsxattr-meta/proto/metadata"
@@ -83,7 +83,11 @@ type server struct {
 
 func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 
-	traceID := getTraceID(ctx)
+	traceID, err := getTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newTraceContext(ctx, traceID)
 
@@ -205,7 +209,11 @@ func (s *server) Home(ctx context.Context, req *pb.HomeReq) (*pb.Void, error) {
 
 func (s *server) Mkdir(ctx context.Context, req *pb.MkdirReq) (*pb.Void, error) {
 
-	traceID := getTraceID(ctx)
+	traceID, err := getTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newTraceContext(ctx, traceID)
 
@@ -302,7 +310,11 @@ func (s *server) Mkdir(ctx context.Context, req *pb.MkdirReq) (*pb.Void, error) 
 
 func (s *server) Stat(ctx context.Context, req *pb.StatReq) (*pb.Metadata, error) {
 
-	traceID := getTraceID(ctx)
+	traceID, err := getTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Metadata{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newTraceContext(ctx, traceID)
 
@@ -461,7 +473,11 @@ func (s *server) Stat(ctx context.Context, req *pb.StatReq) (*pb.Metadata, error
 
 func (s *server) Cp(ctx context.Context, req *pb.CpReq) (*pb.Void, error) {
 
-	traceID := getTraceID(ctx)
+	traceID, err := getTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newTraceContext(ctx, traceID)
 
@@ -584,7 +600,11 @@ func (s *server) Cp(ctx context.Context, req *pb.CpReq) (*pb.Void, error) {
 
 func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
-	traceID := getTraceID(ctx)
+	traceID, err := getTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newTraceContext(ctx, traceID)
 
@@ -684,7 +704,11 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
 func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
-	traceID := getTraceID(ctx)
+	traceID, err := getTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newTraceContext(ctx, traceID)
 
@@ -802,7 +826,12 @@ func (s *server) getMeta(pp string) (*pb.Metadata, error) {
 	id, err := xattr.GetXAttr(pp, xattrKeyID)
 	if err != nil {
 		if err == syscall.ENODATA {
-			id = []byte(uuid.New())
+			rawUUID, err := uuid.NewV4()
+			if err != nil {
+				return nil, err
+			}
+			
+			id = []byte(rawUUID.String())
 			err = xattr.SetXAttr(pp, xattrKeyID, []byte(id), xattr.XAttrCreate)
 			if err != nil {
 				return nil, err
@@ -812,7 +841,11 @@ func (s *server) getMeta(pp string) (*pb.Metadata, error) {
 		}
 	}
 	if len(id) == 0 { // xattr is empty but is set
-		id = []byte(uuid.New())
+		rawUUID, err := uuid.NewV4()
+		if err != nil {
+			return nil, err
+		}
+		id = []byte(rawUUID.String())
 		err = xattr.SetXAttr(pp, xattrKeyID, []byte(id), xattr.XAttrCreateOrReplace)
 		if err != nil {
 			return nil, err

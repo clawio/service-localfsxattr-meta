@@ -16,6 +16,7 @@ const (
 	dataDirEnvar            = serviceID + "_DATADIR"
 	tmpDirEnvar             = serviceID + "_TMPDIR"
 	portEnvar               = serviceID + "_PORT"
+	logLevelEnvar           = serviceID + "_LOGLEVEL"
 	propEnvar               = serviceID + "_PROP"
 	propMaxActiveEnvar      = serviceID + "_PROPMAXACTIVE"
 	propMaxIdleEnvar        = serviceID + "_PROPMAXIDLE"
@@ -27,6 +28,7 @@ type environ struct {
 	dataDir            string
 	tmpDir             string
 	port               int
+	logLevel 	   string
 	prop               string
 	propMaxActive      int
 	propMaxIdle        int
@@ -79,7 +81,6 @@ func printEnviron(e *environ) {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	log.Infof("Service %s started", serviceID)
 
 	env, err := getEnviron()
 	if err != nil {
@@ -87,7 +88,14 @@ func main() {
 		os.Exit(1)
 	}
 
+  	l, err := log.ParseLevel(env.logLevel)
+        if err != nil {
+                l = log.ErrorLevel
+        }
+        log.SetLevel(l)
+
 	printEnviron(env)
+	log.Infof("Service %s started", serviceID)
 
 	p := &newServerParams{}
 	p.dataDir = env.dataDir
