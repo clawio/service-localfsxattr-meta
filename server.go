@@ -1,17 +1,18 @@
 package main
 
 import (
-        "github.com/nu7hatch/gouuid"
 	"fmt"
 	authlib "github.com/clawio/service-auth/lib"
 	pb "github.com/clawio/service-localfsxattr-meta/proto/metadata"
 	proppb "github.com/clawio/service-localfsxattr-meta/proto/propagator"
 	"github.com/clawio/service-localfsxattr-meta/xattr"
 	"github.com/dropbox/godropbox/resource_pool"
+	"github.com/nu7hatch/gouuid"
 	rus "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"math/rand"
 	"mime"
 	"os"
 	"path"
@@ -418,6 +419,17 @@ func (s *server) Stat(ctx context.Context, req *pb.StatReq) (*pb.Metadata, error
 
 	parentMeta.Etag = rec.Etag
 	parentMeta.Modified = rec.Modified
+
+	// Generate load for stat-nochildren benchmakr scenario.
+	// This code can only reside in a feature branch NEVER on master
+	// TODO(labkode) generate load
+
+	var i int = 1
+	for i < 300 {
+		rand.Seed(time.Now().UnixNano())
+		rand.Intn(300)
+		i++
+	}
 
 	if !parentMeta.IsContainer || req.Children == false {
 		return parentMeta, nil
@@ -830,7 +842,7 @@ func (s *server) getMeta(pp string) (*pb.Metadata, error) {
 			if err != nil {
 				return nil, err
 			}
-			
+
 			id = []byte(rawUUID.String())
 			err = xattr.SetXAttr(pp, xattrKeyID, []byte(id), xattr.XAttrCreate)
 			if err != nil {
